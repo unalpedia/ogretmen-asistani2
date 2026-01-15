@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistan Pro - Veri Merkezi</title>
+    <title>Asistan Pro - Master V6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
-        .wheel-box { position: relative; width: 450px; height: 450px; border-radius: 50%; border: 12px solid #1e293b; transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1); background: white; box-shadow: 0 0 50px rgba(0,0,0,0.3); }
-        .wheel-slice { position: absolute; width: 50%; height: 2px; top: 50%; left: 50%; transform-origin: left center; padding-left: 30px; font-weight: 800; color: #1e293b; font-size: 13px; pointer-events: none; }
-        .modal-overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); }
-        .tab-btn { padding: 12px 24px; border-radius: 16px; font-weight: 800; transition: all 0.3s; font-size: 12px; text-transform: uppercase; }
-        .active-tab { background: #4338ca; color: white; box-shadow: 0 10px 20px rgba(67, 56, 202, 0.3); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .wheel-container { position: relative; width: 450px; height: 450px; border-radius: 50%; border: 15px solid #1e293b; transition: transform 4s cubic-bezier(0.1, 0, 0.1, 1); background: #1e293b; overflow: hidden; }
+        .slice { position: absolute; width: 50%; height: 50%; transform-origin: 100% 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 11px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
+        .slice span { transform: rotate(45deg); padding-bottom: 50px; text-align: center; width: 100px; }
+        .neon-glow { box-shadow: 0 0 30px rgba(99, 102, 241, 0.6); border-color: #6366f1 !important; }
+        .tab-btn { padding: 10px 15px; border-radius: 12px; font-weight: 800; font-size: 11px; transition: 0.3s; text-transform: uppercase; }
+        .active-tab { background: #4338ca; color: white; }
     </style>
 </head>
 <body>
@@ -25,111 +26,94 @@
 
         function App() {
             const [page, setPage] = useState('dashboard');
-            const [classes, setClasses] = useState(JSON.parse(localStorage.getItem('ap_v5_cls') || '[]'));
+            const [classes, setClasses] = useState(JSON.parse(localStorage.getItem('ap_v6_cls') || '[]'));
             const [selClass, setSelClass] = useState(null);
             const [students, setStudents] = useState([]);
             const [homeworks, setHomeworks] = useState([]);
+            const [exams, setExams] = useState([]);
             const [rotation, setRotation] = useState(0);
             const [winner, setWinner] = useState(null);
             const [detailStudent, setDetailStudent] = useState(null);
 
-            useEffect(() => { localStorage.setItem('ap_v5_cls', JSON.stringify(classes)); }, [classes]);
+            useEffect(() => { localStorage.setItem('ap_v6_cls', JSON.stringify(classes)); }, [classes]);
 
             useEffect(() => {
                 if (selClass) {
-                    setStudents(JSON.parse(localStorage.getItem(`s5_${selClass.id}`) || '[]'));
-                    setHomeworks(JSON.parse(localStorage.getItem(`h5_${selClass.id}`) || '[]'));
+                    setStudents(JSON.parse(localStorage.getItem(`s6_${selClass.id}`) || '[]'));
+                    setHomeworks(JSON.parse(localStorage.getItem(`h6_${selClass.id}`) || '[]'));
+                    setExams(JSON.parse(localStorage.getItem(`e6_${selClass.id}`) || '[]'));
                 }
             }, [selClass]);
 
-            const saveData = (stds, hws) => {
-                if(stds) { setStudents(stds); localStorage.setItem(`s5_${selClass.id}`, JSON.stringify(stds)); }
-                if(hws) { setHomeworks(hws); localStorage.setItem(`h5_${selClass.id}`, JSON.stringify(hws)); }
+            const saveData = (stds, hws, exms) => {
+                if(stds) { setStudents(stds); localStorage.setItem(`s6_${selClass.id}`, JSON.stringify(stds)); }
+                if(hws) { setHomeworks(hws); localStorage.setItem(`h6_${selClass.id}`, JSON.stringify(hws)); }
+                if(exms) { setExams(exms); localStorage.setItem(`e6_${selClass.id}`, JSON.stringify(exms)); }
             };
 
             const addLog = (stdId, type, amount, reason) => {
                 const updated = students.map(s => {
                     if(s.id === stdId) {
-                        const logs = s.logs || [];
                         return {
                             ...s, 
                             xp: (s.xp || 0) + amount,
-                            logs: [{ date: new Date().toLocaleString('tr-TR'), type, amount, reason }, ...logs]
+                            logs: [{ date: new Date().toLocaleString('tr-TR'), type, amount, reason }, ...(s.logs || [])]
                         };
                     }
                     return s;
                 });
-                saveData(updated, null);
+                saveData(updated, null, null);
+                if(detailStudent && detailStudent.id === stdId) setDetailStudent(updated.find(x => x.id === stdId));
             };
 
-            const handleHwStatus = (hwId, stdId, status, hwTitle) => {
-                const currentHw = homeworks.find(h => h.id === hwId);
-                const prevStatus = currentHw.results?.[stdId] || 'none';
-                
-                let diff = 0;
-                if (prevStatus === 'done') diff -= 10;
-                if (prevStatus === 'partial') diff -= 5;
-                if (status === 'done') diff += 10;
-                if (status === 'partial') diff += 5;
-
-                if (diff !== 0) {
-                    addLog(stdId, 'ÖDEV', diff, hwTitle);
-                }
-
-                const newHws = homeworks.map(h => {
-                    if(h.id === hwId) return {...h, results: {...(h.results || {}), [stdId]: status}};
-                    return h;
-                });
-                saveData(null, newHws);
+            const handleHw = (hwId, stdId, status, title) => {
+                const hw = homeworks.find(h => h.id === hwId);
+                const prev = hw.results?.[stdId] || 'none';
+                let diff = (status === 'done' ? 10 : status === 'partial' ? 5 : 0) - (prev === 'done' ? 10 : prev === 'partial' ? 5 : 0);
+                if(diff !== 0) addLog(stdId, 'ÖDEV', diff, title);
+                const newHws = homeworks.map(h => h.id === hwId ? {...h, results: {...(h.results || {}), [stdId]: status}} : h);
+                saveData(null, newHws, null);
             };
 
             const spin = () => {
-                if(students.length === 0) return alert("Öğrenci yok!");
-                const sliceAngle = 360 / students.length;
-                const randomSlice = Math.floor(Math.random() * students.length);
-                const extraRots = 10 * 360; // 10 tam tur
-                
-                // Ok tepede (0 derece). Çarkı ters yöne (saat yönü tersi) çeviriyoruz ki 
-                // index 0 tepede başlasın.
-                const targetRotation = extraRots + (randomSlice * sliceAngle);
-                
-                setRotation(prev => prev + targetRotation);
+                if(students.length < 2) return;
+                const newRot = rotation + 1440 + Math.random() * 360;
+                setRotation(newRot);
                 setWinner(null);
-
                 setTimeout(() => {
-                    // Matematiksel olarak okun ucundaki ismi bul
-                    // (Tüm rotasyonun 360'a bölümünden kalan, okun gösterdiği dilimi verir)
-                    setWinner(students[randomSlice]);
-                }, 5100);
+                    const normalized = (newRot % 360);
+                    const sliceSize = 360 / students.length;
+                    const idx = Math.floor(((360 - normalized) % 360) / sliceSize);
+                    setWinner(students[idx]);
+                }, 4000);
             };
 
-            const getStats = (student) => {
-                const logs = student.logs || [];
-                return {
-                    total: student.xp || 0,
-                    hw: logs.filter(l => l.type === 'ÖDEV').reduce((a, b) => a + b.amount, 0),
-                    wheel: logs.filter(l => l.type === 'ÇARK').reduce((a, b) => a + b.amount, 0)
-                };
+            const calculateExam = (examId, stdId, d, y, total) => {
+                const net = d - (y / 3);
+                const percent = (net / total) * 100;
+                const newExams = exams.map(e => {
+                    if(e.id === examId) return {...e, results: {...(e.results || {}), [stdId]: {d, y, net, percent}}};
+                    return e;
+                });
+                saveData(null, null, newExams);
             };
 
             return (
                 <div className="min-h-screen">
-                    <nav className="bg-slate-900 text-white p-6 shadow-2xl flex justify-between items-center border-b-4 border-indigo-500">
-                        <h1 onClick={()=>{setPage('dashboard'); setSelClass(null)}} className="text-2xl font-black cursor-pointer tracking-tighter uppercase italic">Asistan <span className="text-indigo-400">Pro</span></h1>
-                        {selClass && <div className="flex items-center gap-4"><span className="bg-indigo-600 px-4 py-1 rounded-xl text-xs font-bold tracking-widest">{selClass.name}</span></div>}
+                    <nav className="bg-indigo-900 text-white p-5 flex justify-between items-center shadow-xl">
+                        <h1 onClick={()=>{setPage('dashboard'); setSelClass(null)}} className="text-xl font-black cursor-pointer italic">ASİSTAN <span className="text-yellow-400">PRO V6</span></h1>
+                        {selClass && <span className="bg-white/20 px-4 py-1 rounded-lg text-xs font-bold">{selClass.name}</span>}
                     </nav>
 
                     <main className="p-6 max-w-7xl mx-auto">
                         {page === 'dashboard' && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div onClick={()=>{const n=prompt("Sınıf Adı:"); if(n)setClasses([...classes,{id:Date.now(),name:n}])}} className="h-44 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all cursor-pointer font-black uppercase">
-                                    + Sınıf Ekle
-                                </div>
+                                <button onClick={()=>{const n=prompt("Sınıf Adı:"); if(n)setClasses([...classes,{id:Date.now(),name:n}])}} className="h-40 border-4 border-dashed border-slate-300 rounded-[2.5rem] font-black text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all uppercase">+ Sınıf Ekle</button>
                                 {classes.map(c => (
-                                    <div key={c.id} onClick={()=>{setSelClass(c); setPage('list')}} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-[12px] border-indigo-600 hover:-translate-y-2 transition-all cursor-pointer relative group">
-                                        <button onClick={(e)=>{e.stopPropagation(); if(confirm("Silinsin mi?")) setClasses(classes.filter(x=>x.id!==c.id))}} className="absolute top-6 right-6 text-red-100 hover:text-red-500 font-bold">SİL</button>
-                                        <h3 className="text-3xl font-black text-slate-800 tracking-tighter uppercase">{c.name}</h3>
-                                        <p className="text-indigo-500 font-bold text-[10px] mt-2 tracking-widest uppercase">Veri Merkezi</p>
+                                    <div key={c.id} onClick={()=>{setSelClass(c); setPage('list')}} className="bg-white p-8 rounded-[2.5rem] shadow-xl border-b-8 border-indigo-600 hover:-translate-y-2 transition-all cursor-pointer relative group">
+                                        <button onClick={(e)=>{e.stopPropagation(); setClasses(classes.filter(x=>x.id!==c.id))}} className="absolute top-6 right-6 text-red-100 hover:text-red-500 font-bold">SİL</button>
+                                        <h3 className="text-2xl font-black text-slate-800 italic uppercase">{c.name}</h3>
+                                        <p className="text-indigo-400 font-bold text-[10px] mt-1 tracking-widest uppercase italic">Yönetim Hazır</p>
                                     </div>
                                 ))}
                             </div>
@@ -137,164 +121,137 @@
 
                         {selClass && (
                             <div className="space-y-6">
-                                <div className="flex gap-2 p-2 bg-white rounded-2xl w-fit shadow-sm border border-slate-200">
-                                    {['list','hw','wheel','rank'].map(t => (
+                                <div className="flex flex-wrap gap-2 p-2 bg-white rounded-2xl w-fit shadow-sm border">
+                                    {['list','hw','wheel','exam','rank'].map(t => (
                                         <button key={t} onClick={()=>setPage(t)} className={`tab-btn ${page===t?'active-tab':'text-slate-400 hover:bg-slate-50'}`}>
-                                            {t==='list'?'Öğrenciler':t==='hw'?'Ödev':t==='wheel'?'Kura': 'Skor'}
+                                            {t==='list'?'Öğrenciler':t==='hw'?'Ödev':t==='wheel'?'Kura': t==='exam'?'Deneme':'Skor'}
                                         </button>
                                     ))}
                                 </div>
 
                                 {page === 'list' && (
-                                    <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl">
-                                        <div className="flex justify-between items-center mb-8 border-b pb-6">
-                                            <h2 className="text-2xl font-black">ÖĞRENCİ YÖNETİMİ</h2>
-                                            <button onClick={()=>{
-                                                const raw=prompt("İsimleri yapıştırın:");
-                                                if(raw) saveData(raw.split('\n').filter(l=>l.trim()).map(l=>({id:Math.random(), name:l, xp:0, logs:[]})), null);
-                                            }} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">TOPLU EKLE</button>
+                                    <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h2 className="text-xl font-black italic">ÖĞRENCİ KAYIT</h2>
+                                            <button onClick={()=>{const r=prompt("İsimleri alt alta girin:"); if(r)saveData(r.split('\n').filter(l=>l.trim()).map(l=>({id:Math.random(), name:l, xp:0, logs:[]})), null, null)}} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">TOPLU EKLE</button>
                                         </div>
-                                        <div className="grid md:grid-cols-4 gap-4">
-                                            {students.map((s,i) => (
-                                                <div key={s.id} onClick={()=>setDetailStudent(s)} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer hover:bg-indigo-50 transition-colors flex justify-between items-center group">
-                                                    <span className="font-bold text-slate-700 truncate">{s.name}</span>
-                                                    <span className="text-indigo-600 font-black text-xs">{s.xp || 0}</span>
-                                                </div>
-                                            ))}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {students.map(s => <div key={s.id} onClick={()=>setDetailStudent(s)} className="p-4 bg-slate-50 rounded-2xl border font-bold cursor-pointer hover:bg-indigo-50 transition-colors text-sm">{s.name}</div>)}
                                         </div>
                                     </div>
                                 )}
 
                                 {page === 'hw' && (
-                                    <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl overflow-x-auto">
-                                        <div className="flex justify-between items-center mb-10">
-                                            <h2 className="text-2xl font-black uppercase tracking-tighter italic">Ödev Matrisi</h2>
-                                            <button onClick={()=>{const t=prompt("Başlık:"); if(t) saveData(null, [...homeworks,{id:Date.now(),title:t,results:{}}])}} className="bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold">+ YENİ ÖDEV</button>
+                                    <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-x-auto">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h2 className="text-xl font-black italic">ÖDEV TAKİP MATRİSİ</h2>
+                                            <button onClick={()=>{const t=prompt("Konu:"); if(t)saveData(null, [...homeworks,{id:Date.now(),title:t,results:{}}], null)}} className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold">+ ÖDEV EKLE</button>
                                         </div>
                                         <table className="w-full">
-                                            <thead>
-                                                <tr className="text-left border-b-2">
-                                                    <th className="py-4 font-black text-slate-400 text-xs uppercase">Öğrenci</th>
-                                                    {homeworks.map(h => <th key={h.id} className="px-4 text-center text-[10px] font-black text-indigo-600 uppercase italic">{h.title}</th>)}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {students.map(s => (
-                                                    <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50">
-                                                        <td className="py-3 font-bold text-slate-700 text-sm">{s.name}</td>
-                                                        {homeworks.map(h => {
-                                                            const status = h.results?.[s.id] || 'none';
-                                                            return (
-                                                                <td key={h.id} className="px-2 text-center">
-                                                                    <div className="flex justify-center gap-1">
-                                                                        <button onClick={()=>handleHwStatus(h.id, s.id, 'done', h.title)} className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${status==='done'?'bg-green-500 text-white':'bg-slate-100 text-slate-300'}`}>TAM</button>
-                                                                        <button onClick={()=>handleHwStatus(h.id, s.id, 'partial', h.title)} className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${status==='partial'?'bg-yellow-500 text-white':'bg-slate-100 text-slate-300'}`}>AZ</button>
-                                                                        <button onClick={()=>handleHwStatus(h.id, s.id, 'none', h.title)} className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[9px] ${status==='none'?'bg-red-500 text-white':'bg-slate-100 text-slate-300'}`}>YOK</button>
-                                                                    </div>
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
+                                            <thead><tr className="text-left"><th className="pb-4 font-black text-xs uppercase text-slate-400">Öğrenci</th>{homeworks.map(h=><th key={h.id} className="pb-4 text-center text-[10px] font-black text-indigo-600 italic px-2">{h.title}</th>)}</tr></thead>
+                                            <tbody>{students.map(s=>(<tr key={s.id} className="border-t border-slate-50"><td className="py-3 font-bold text-xs">{s.name}</td>{homeworks.map(h=>(<td key={h.id} className="px-1 text-center"><div className="flex gap-1 justify-center">{['done','partial','none'].map(st=>(<button key={st} onClick={()=>handleHw(h.id,s.id,st,h.title)} className={`w-7 h-7 rounded-lg text-[8px] font-black ${h.results?.[s.id]===st ? (st==='done'?'bg-green-500':st==='partial'?'bg-yellow-500':'bg-red-500')+' text-white' : 'bg-slate-100 text-slate-300'}`}>{st==='done'?'TAM':st==='partial'?'AZ':'YOK'}</button>))}</div></td>))}</tr>))}</tbody>
                                         </table>
                                     </div>
                                 )}
 
                                 {page === 'wheel' && (
-                                    <div className="flex flex-col items-center bg-indigo-950 rounded-[4rem] p-16 shadow-2xl relative">
-                                        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-10 h-14 bg-red-500 z-10 shadow-xl" style={{clipPath:'polygon(0 0, 100% 0, 50% 100%)'}}></div>
-                                        <div className="wheel-box" style={{transform: `rotate(-${rotation}deg)`}}>
+                                    <div className="flex flex-col items-center p-10 bg-slate-900 rounded-[3rem] shadow-2xl relative overflow-hidden min-h-[700px]">
+                                        <div className={`wheel-container ${winner ? 'neon-glow' : ''}`} style={{transform: `rotate(${rotation}deg)`}}>
                                             {students.map((s, i) => (
-                                                <div key={s.id} className="wheel-slice" style={{transform: `rotate(${(360/students.length)*i}deg)`}}>
-                                                    <span className="bg-white px-3 py-1 rounded-full border border-slate-200">{s.name}</span>
+                                                <div key={s.id} className="slice" style={{transform: `rotate(${(360/students.length)*i}deg) skewY(${90 - (360/students.length)}deg)`, backgroundColor: `hsl(${i * (360/students.length)}, 70%, 45%)`}}>
+                                                    <span style={{transform: `skewY(-${90 - (360/students.length)}deg) rotate(${360/students.length/2}deg)`}}>{s.name}</span>
                                                 </div>
                                             ))}
                                         </div>
-                                        <button onClick={spin} className="mt-12 bg-yellow-400 text-indigo-900 px-20 py-6 rounded-[2rem] font-black text-4xl shadow-2xl hover:scale-105 active:scale-95 transition-all uppercase tracking-tighter italic">Döndür!</button>
-                                        
+                                        <button onClick={spin} className="mt-12 bg-yellow-400 text-slate-900 px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all">ÇEVİR!</button>
                                         {winner && (
-                                            <div className="mt-10 p-10 bg-white rounded-[3rem] w-full max-w-2xl text-center shadow-2xl animate-in zoom-in duration-300">
-                                                <p className="text-indigo-600 font-black tracking-widest mb-2 uppercase italic text-sm">Talihli Kişi</p>
-                                                <h2 className="text-6xl font-black text-slate-800 mb-8 tracking-tighter uppercase">{winner.name}</h2>
-                                                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                                                    {[-10,-5,-3,-1,1,3,5,10].map(val => (
-                                                        <button key={val} onClick={()=>addLog(winner.id, 'ÇARK', val, 'Çark Performansı')} className={`py-3 rounded-xl font-black text-sm transition-all ${val > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{val > 0 ? `+${val}` : val}</button>
-                                                    ))}
+                                            <div className="mt-8 p-10 bg-white rounded-[2rem] text-center w-full max-w-xl animate-bounce">
+                                                <h2 className="text-4xl font-black text-indigo-600 mb-6 uppercase italic">{winner.name}</h2>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {[-10,-5,1,3,5,10].map(v => <button key={v} onClick={()=>addLog(winner.id, 'KURA', v, 'Kura Ödülü')} className={`py-3 rounded-xl font-black text-white ${v>0?'bg-green-500':'bg-red-500'}`}>{v>0?`+${v}`:v}</button>)}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                {page === 'rank' && (
-                                    <div className="max-w-4xl mx-auto py-10 space-y-4">
-                                        <h2 className="text-center font-black text-4xl text-slate-800 mb-12 italic tracking-tighter uppercase italic">🏆 Başarı Sıralaması</h2>
-                                        <div className="grid gap-3">
-                                            {students.sort((a,b)=>(b.xp||0)-(a.xp||0)).map((s,i) => {
-                                                const stats = getStats(s);
-                                                return (
-                                                    <div key={s.id} onClick={()=>setDetailStudent(s)} className="bg-white p-6 rounded-[2rem] shadow-lg flex justify-between items-center border-l-[12px] border-indigo-600 cursor-pointer hover:translate-x-2 transition-all">
-                                                        <div className="flex items-center gap-6">
-                                                            <span className="text-4xl font-black text-slate-100 tracking-tighter">#{i+1}</span>
-                                                            <div>
-                                                                <h3 className="text-xl font-black text-slate-700 uppercase tracking-tighter">{s.name}</h3>
-                                                                <div className="flex gap-4 mt-1">
-                                                                    <span className="text-[10px] font-bold text-emerald-600">ÖDEV: {stats.hw}</span>
-                                                                    <span className="text-[10px] font-bold text-amber-600">ÇARK: {stats.wheel}</span>
-                                                                </div>
+                                {page === 'exam' && (
+                                    <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-x-auto">
+                                        <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                            <h2 className="text-xl font-black italic">DENEME ANALİZ MERKEZİ</h2>
+                                            <button onClick={()=>{const t=prompt("Deneme Adı:"); const q=prompt("Soru Sayısı (15 veya 20):"); if(t && q)saveData(null, null, [...exams,{id:Date.now(),title:t,qCount:parseInt(q),results:{}}])}} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">+ YENİ DENEME</button>
+                                        </div>
+                                        {exams.map(e => (
+                                            <div key={e.id} className="mb-10 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                                                <h3 className="text-lg font-black text-indigo-700 mb-4 uppercase italic">{e.title} ({e.qCount} Soru)</h3>
+                                                <div className="space-y-2">
+                                                    {students.sort((a,b)=>((e.results?.[b.id]?.net || 0) - (e.results?.[a.id]?.net || 0))).map(s => (
+                                                        <div key={s.id} className="bg-white p-3 rounded-xl shadow-sm border flex justify-between items-center text-xs">
+                                                            <span className="font-bold w-1/4">{s.name}</span>
+                                                            <div className="flex gap-2 items-center flex-1 justify-end">
+                                                                <input placeholder="D" type="number" className="w-12 p-1 border rounded text-center" onBlur={(ev)=>calculateExam(e.id, s.id, parseInt(ev.target.value), (e.results?.[s.id]?.y || 0), e.qCount)} defaultValue={e.results?.[s.id]?.d} />
+                                                                <input placeholder="Y" type="number" className="w-12 p-1 border rounded text-center" onBlur={(ev)=>calculateExam(e.id, s.id, (e.results?.[s.id]?.d || 0), parseInt(ev.target.value), e.qCount)} defaultValue={e.results?.[s.id]?.y} />
+                                                                <div className="w-24 bg-indigo-50 px-2 py-1 rounded font-black text-indigo-600 text-center">NET: {e.results?.[s.id]?.net?.toFixed(2) || 0}</div>
+                                                                <div className="w-16 bg-emerald-50 px-2 py-1 rounded font-black text-emerald-600 text-center">%{e.results?.[s.id]?.percent?.toFixed(0) || 0}</div>
                                                             </div>
                                                         </div>
-                                                        <div className="text-3xl font-black text-indigo-600 bg-indigo-50 px-8 py-3 rounded-2xl">{s.xp || 0} <span className="text-xs">XP</span></div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {page === 'rank' && (
+                                    <div className="max-w-3xl mx-auto space-y-4">
+                                        <h2 className="text-center font-black text-3xl italic uppercase tracking-tighter mb-8">🏆 Liderlik Tablosu</h2>
+                                        {students.sort((a,b)=>b.xp-a.xp).map((s,i) => (
+                                            <div key={s.id} onClick={()=>setDetailStudent(s)} className="bg-white p-6 rounded-[2.5rem] shadow-lg flex justify-between items-center border-l-[12px] border-indigo-600 cursor-pointer hover:translate-x-2 transition-all">
+                                                <div className="flex items-center gap-6">
+                                                    <span className="text-4xl font-black text-slate-100">#{i+1}</span>
+                                                    <div>
+                                                        <h3 className="font-black text-slate-700 uppercase italic">{s.name}</h3>
+                                                        <p className="text-[10px] font-bold text-slate-400">ÖDEV: {s.logs?.filter(l=>l.type==='ÖDEV').reduce((a,b)=>a+b.amount,0) || 0} | KURA: {s.logs?.filter(l=>l.type==='KURA').reduce((a,b)=>a+b.amount,0) || 0}</p>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                                </div>
+                                                <div className="text-2xl font-black text-indigo-600 bg-indigo-50 px-6 py-2 rounded-2xl">{s.xp || 0} <span className="text-xs">XP</span></div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Öğrenci Detay Modalı (Log Geçmişi) */}
                         {detailStudent && (
-                            <div className="fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4" onClick={()=>setDetailStudent(null)}>
-                                <div className="bg-white w-full max-w-xl rounded-[3rem] p-10 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col" onClick={e=>e.stopPropagation()}>
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase">{detailStudent.name}</h2>
-                                            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mt-1 italic">Puan Karnesi ve Geçmişi</p>
-                                        </div>
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm" onClick={()=>setDetailStudent(null)}>
+                                <div className="bg-white w-full max-w-xl rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e=>e.stopPropagation()}>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-3xl font-black italic uppercase tracking-tighter">{detailStudent.name}</h2>
                                         <button onClick={()=>setDetailStudent(null)} className="text-slate-300 hover:text-red-500 font-black text-2xl">×</button>
                                     </div>
-
-                                    <div className="grid grid-cols-3 gap-4 mb-8">
-                                        <div className="bg-slate-50 p-4 rounded-2xl text-center border">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Toplam</p>
-                                            <p className="text-2xl font-black text-indigo-600">{getStats(detailStudent).total}</p>
+                                    <div className="bg-indigo-600 text-white p-6 rounded-3xl mb-6 flex justify-between items-center shadow-lg shadow-indigo-200">
+                                        <span className="font-bold text-sm uppercase opacity-70 italic">Güncel Puan</span>
+                                        <span className="text-5xl font-black tracking-tighter">{detailStudent.xp} XP</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400">Puan Ekle/Çıkar</label>
+                                            <div className="flex gap-2">
+                                                <input id="manXP" type="number" className="flex-1 p-3 border-2 rounded-xl font-bold" placeholder="Miktar" />
+                                                <button onClick={()=>{const v=parseInt(document.getElementById('manXP').value); if(v)addLog(detailStudent.id,'MANUEL',v,'Manuel Puan Güncelleme')}} className="bg-indigo-900 text-white px-4 rounded-xl font-black">UYGULA</button>
+                                            </div>
                                         </div>
-                                        <div className="bg-emerald-50 p-4 rounded-2xl text-center border border-emerald-100">
-                                            <p className="text-[10px] font-bold text-emerald-400 uppercase">Ödev</p>
-                                            <p className="text-2xl font-black text-emerald-600">{getStats(detailStudent).hw}</p>
-                                        </div>
-                                        <div className="bg-amber-50 p-4 rounded-2xl text-center border border-amber-100">
-                                            <p className="text-[10px] font-bold text-amber-400 uppercase">Çark</p>
-                                            <p className="text-2xl font-black text-amber-600">{getStats(detailStudent).wheel}</p>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400">Hızlı Sil</label>
+                                            <button onClick={()=>{if(confirm('Tüm geçmiş silinsin mi?')){const updated=students.map(s=>s.id===detailStudent.id?{...s, xp:0, logs:[]}:s); saveData(updated,null,null); setDetailStudent(null);}}} className="bg-red-50 text-red-500 p-3 rounded-xl font-black border border-red-100">PUANLARI SIFIRLA</button>
                                         </div>
                                     </div>
-
-                                    <div className="overflow-y-auto flex-1 pr-2 space-y-3">
-                                        <h4 className="font-black text-xs text-slate-400 uppercase tracking-widest mb-4">Son İşlemler</h4>
-                                        {(detailStudent.logs || []).length === 0 ? (
-                                            <p className="text-center py-10 text-slate-300 italic font-bold">Henüz işlem geçmişi yok.</p>
-                                        ) : detailStudent.logs.map((log, i) => (
-                                            <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <div>
-                                                    <p className="font-black text-slate-700 text-sm uppercase">{log.reason}</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{log.date} • {log.type}</p>
-                                                </div>
-                                                <span className={`font-black text-lg ${log.amount > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                    {log.amount > 0 ? `+${log.amount}` : log.amount}
-                                                </span>
+                                    <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">İşlem Geçmişi</h4>
+                                        {(detailStudent.logs || []).map((l, i) => (
+                                            <div key={i} className="bg-slate-50 p-4 rounded-2xl border flex justify-between items-center">
+                                                <div><p className="font-black text-slate-700 text-xs uppercase">{l.reason}</p><p className="text-[9px] text-slate-400 font-bold">{l.date}</p></div>
+                                                <span className={`font-black ${l.amount>0?'text-emerald-500':'text-red-500'}`}>{l.amount>0?`+${l.amount}`:l.amount}</span>
                                             </div>
                                         ))}
                                     </div>
