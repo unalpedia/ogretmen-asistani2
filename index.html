@@ -3,26 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistan Pro - Orijinal Sürüm</title>
+    <title>Asistan Pro - Resmi Sürüm</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
-        .wheel-rotate { transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .gradient-bg { background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); }
+        .tab-active { background: white; color: #4338ca; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
+        const { 
+          Lock, Plus, Trash2, CheckCircle, XCircle, Users, RotateCw, Trophy, 
+          BookOpen, FileText, LayoutDashboard, Star, Zap, Trash 
+        } = lucideReact;
 
-        // Orijinal Bileşen Başlangıcı
-        function TeacherAssistantPro() {
+        function App() {
             const [currentPage, setCurrentPage] = useState('dashboard');
             const [selectedClass, setSelectedClass] = useState(null);
             const [classes, setClasses] = useState([]);
@@ -31,123 +36,200 @@
             const [isLocked, setIsLocked] = useState(true);
             const [rotation, setRotation] = useState(0);
             const [lastWinner, setLastWinner] = useState(null);
-            const [showAddClassForm, setShowAddClassForm] = useState(false);
-            const [newClassName, setNewClassName] = useState('');
             
             const TEACHER_PIN = "1234";
 
-            // Veri Yönetimi (Local Storage)
+            // --- VERİ YÖNETİMİ ---
             useEffect(() => {
-                const savedClasses = localStorage.getItem('classes_pro');
-                if (savedClasses) setClasses(JSON.parse(savedClasses));
+                const saved = localStorage.getItem('asistan_pro_v2');
+                if (saved) setClasses(JSON.parse(saved));
             }, []);
 
             useEffect(() => {
                 if (selectedClass) {
-                    const s = localStorage.getItem(`students_pro_${selectedClass.id}`);
-                    const h = localStorage.getItem(`homeworks_pro_${selectedClass.id}`);
+                    const s = localStorage.getItem(`s_${selectedClass.id}`);
+                    const h = localStorage.getItem(`h_${selectedClass.id}`);
                     setStudents(s ? JSON.parse(s) : []);
                     setHomeworks(h ? JSON.parse(h) : []);
                 }
-                // İkonları her sayfa değişiminde yenile
-                setTimeout(() => lucide.createIcons(), 100);
-            }, [selectedClass, currentPage]);
+            }, [selectedClass]);
 
             const checkAccess = (action) => {
                 if (!isLocked) { action(); return; }
-                const pin = prompt("İşlem için PIN girin:");
-                if (pin === TEACHER_PIN) { setIsLocked(false); action(); } 
-                else { alert("Hatalı PIN!"); }
+                const pin = prompt("Öğretmen PIN Kodunu Girin:");
+                if (pin === TEACHER_PIN) { setIsLocked(false); action(); }
+                else { alert("PIN Hatalı!"); }
             };
 
             const saveClasses = (newList) => {
                 setClasses(newList);
-                localStorage.setItem('classes_pro', JSON.stringify(newList));
+                localStorage.setItem('asistan_pro_v2', JSON.stringify(newList));
+            };
+
+            // --- İŞLEMLER ---
+            const addClass = () => {
+                const name = prompt("Sınıf Adı (Örn: 9-A):");
+                if (name) saveClasses([...classes, { id: Date.now(), name }]);
             };
 
             const deleteClass = (id, e) => {
                 e.stopPropagation();
                 checkAccess(() => {
-                    if(confirm("Sınıfı silmek istediğinize emin misiniz?")) {
-                        const newList = classes.filter(c => c.id !== id);
-                        saveClasses(newList);
+                    if (confirm("Bu sınıfı silmek istiyor musunuz?")) {
+                        saveClasses(classes.filter(c => c.id !== id));
                     }
                 });
             };
 
-            const getFinalScore = (s) => {
-                let hwPts = 0;
-                homeworks.forEach(h => { if(h.results?.[s.id] === 'done') hwPts += 10; });
-                return (s.wheelPoints || 0) + hwPts;
+            const addStudents = () => {
+                const raw = prompt("Öğrenci No ve İsimleri yapıştırın (Her satıra bir kişi):");
+                if (raw) {
+                    const parsed = raw.split('\n').filter(l => l.trim()).map(l => ({ id: Math.random(), name: l, points: 0 }));
+                    const newList = [...students, ...parsed];
+                    setStudents(newList);
+                    localStorage.setItem(`s_${selectedClass.id}`, JSON.stringify(newList));
+                }
+            };
+
+            const addHomework = () => {
+                const title = prompt("Ödev Konusu:");
+                if (title) {
+                    const newHw = { id: Date.now(), title, date: new Date().toLocaleDateString(), results: {} };
+                    const newList = [...homeworks, newHw];
+                    setHomeworks(newList);
+                    localStorage.setItem(`h_${selectedClass.id}`, JSON.stringify(newList));
+                }
             };
 
             return (
                 <div className="min-h-screen">
-                    {/* Üst Menü - Orijinal Tasarım */}
-                    <nav className="bg-indigo-700 text-white p-4 sticky top-0 z-50 shadow-lg">
+                    {/* Üst Navigasyon */}
+                    <nav className="gradient-bg text-white p-4 sticky top-0 z-50 shadow-xl">
                         <div className="max-w-7xl mx-auto flex justify-between items-center">
-                            <h1 className="text-xl font-black flex items-center gap-2 cursor-pointer" onClick={() => {setCurrentPage('dashboard'); setSelectedClass(null);}}>
-                                🎓 ASİSTAN <span className="bg-white/20 px-2 py-0.5 rounded text-xs">PRO</span>
-                            </h1>
-                            <div className="flex gap-2">
-                                {selectedClass && ['students', 'homework', 'wheel', 'leaderboard'].map(tab => (
-                                    <button key={tab} onClick={() => setCurrentPage(tab)} className={`px-3 py-1 rounded-lg text-sm font-bold ${currentPage===tab?'bg-white text-indigo-700':'hover:bg-indigo-600'}`}>
-                                        {tab.toUpperCase()}
-                                    </button>
-                                ))}
-                                <button onClick={() => isLocked ? checkAccess(()=>{}) : setIsLocked(true)} className={`ml-4 px-4 py-1 rounded-xl font-bold ${isLocked?'bg-red-500':'bg-green-500'}`}>
-                                    {isLocked ? "KİLİTLİ" : "AÇIK"}
-                                </button>
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => {setCurrentPage('dashboard'); setSelectedClass(null);}}>
+                                <div className="bg-white/20 p-2 rounded-xl"><LayoutDashboard size={24}/></div>
+                                <h1 className="text-xl font-black tracking-tighter uppercase">Asistan <span className="text-yellow-400">Pro</span></h1>
                             </div>
+                            <button onClick={() => isLocked ? checkAccess(()=>{}) : setIsLocked(true)} 
+                                className={`px-5 py-2 rounded-2xl font-bold transition flex items-center gap-2 ${isLocked ? 'bg-red-500/20 text-red-100' : 'bg-green-500 shadow-lg shadow-green-500/40'}`}>
+                                {isLocked ? <Lock size={18}/> : <RotateCw size={18}/>}
+                                {isLocked ? "KİLİTLİ" : "AÇIK"}
+                            </button>
                         </div>
                     </nav>
 
-                    <main className="max-w-7xl mx-auto p-6">
+                    <main className="max-w-7xl mx-auto p-6 md:p-10">
                         {currentPage === 'dashboard' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div onClick={() => checkAccess(() => setShowAddClassForm(true))} className="border-4 border-dashed border-slate-300 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-500 cursor-pointer transition bg-white/50 font-bold">
-                                    <i data-lucide="plus" className="w-12 h-12"></i>
-                                    <span>Yeni Sınıf Ekle</span>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div onClick={() => checkAccess(addClass)} className="h-48 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-600 cursor-pointer transition-all bg-white/50">
+                                    <Plus size={40} className="mb-2"/>
+                                    <span className="font-bold text-lg">Yeni Sınıf Oluştur</span>
                                 </div>
                                 {classes.map(c => (
-                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl cursor-pointer transition border-b-8 border-indigo-600 relative group">
-                                        <button onClick={(e) => deleteClass(c.id, e)} className="absolute top-4 right-4 text-red-300 opacity-0 group-hover:opacity-100 transition"><i data-lucide="trash-2"></i></button>
+                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} 
+                                        className="bg-white p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all border-b-8 border-indigo-600 relative group cursor-pointer">
+                                        <button onClick={(e) => deleteClass(c.id, e)} className="absolute top-6 right-6 text-red-300 opacity-0 group-hover:opacity-100 transition hover:text-red-600"><Trash2 size={24}/></button>
+                                        <div className="bg-indigo-50 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-indigo-600"><Users size={28}/></div>
                                         <h3 className="text-2xl font-black text-slate-800">{c.name}</h3>
-                                        <p className="text-slate-400 font-bold text-xs uppercase mt-2 tracking-widest">2025-2026 Dönemi</p>
+                                        <p className="text-slate-400 font-bold text-xs uppercase mt-2 tracking-widest">Yönetmek İçin Tıklayın</p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {/* Diğer Modüller (Kura, Skor vb.) Buraya Gelecek */}
-                        {selectedClass && currentPage === 'wheel' && (
-                            <div className="bg-indigo-900 rounded-[3rem] p-12 text-center text-white shadow-2xl">
-                                <div style={{ transform: `rotate(${rotation}deg)` }} className="w-64 h-64 rounded-full border-8 border-white/20 mx-auto flex items-center justify-center wheel-rotate mb-8 bg-indigo-800">
-                                    <i data-lucide="trophy" className="w-24 h-24 opacity-20"></i>
+                        {selectedClass && (
+                            <div className="space-y-8 animate-in fade-in duration-500">
+                                {/* Alt Sekmeler */}
+                                <div className="bg-slate-200/60 p-1.5 rounded-2xl flex gap-1 w-fit">
+                                    {[
+                                        {id:'students', label:'Liste', icon:<Users size={18}/>},
+                                        {id:'homework', label:'Ödevler', icon:<BookOpen size={18}/>},
+                                        {id:'wheel', label:'Kura Çarkı', icon:<RotateCw size={18}/>},
+                                        {id:'leaderboard', label:'Sıralama', icon:<Trophy size={18}/>}
+                                    ].map(tab => (
+                                        <button key={tab.id} onClick={() => setCurrentPage(tab.id)} 
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-sm transition-all ${currentPage === tab.id ? 'tab-active' : 'text-slate-500 hover:text-indigo-600'}`}>
+                                            {tab.icon} {tab.label.toUpperCase()}
+                                        </button>
+                                    ))}
                                 </div>
-                                <button onClick={() => {
-                                    const r = rotation + 1800 + Math.random()*360;
-                                    setRotation(r);
-                                    setTimeout(() => setLastWinner(students[Math.floor(Math.random()*students.length)]), 3000);
-                                }} className="bg-yellow-400 text-indigo-900 px-12 py-4 rounded-2xl font-black text-2xl">ÇEVİR!</button>
-                                {lastWinner && <h2 className="mt-8 text-4xl font-black text-yellow-400">{lastWinner.firstName || lastWinner.text}</h2>}
-                            </div>
-                        )}
 
-                        {/* Sınıf Ekleme Formu (Modal) */}
-                        {showAddClassForm && (
-                            <div className="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-[100]">
-                                <div className="bg-white p-8 rounded-[2rem] w-full max-w-md">
-                                    <h2 className="text-2xl font-black mb-4">Sınıf Adı</h2>
-                                    <input type="text" onChange={(e)=>setNewClassName(e.target.value)} className="w-full p-4 border-2 rounded-xl mb-4" placeholder="Örn: 9-A" />
-                                    <div className="flex gap-2">
-                                        <button onClick={() => {
-                                            saveClasses([...classes, {id: Date.now(), name: newClassName}]);
-                                            setShowAddClassForm(false);
-                                        }} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">Kaydet</button>
-                                        <button onClick={()=>setShowAddClassForm(false)} className="px-6 py-3 bg-slate-100 rounded-xl font-bold">İptal</button>
+                                {currentPage === 'students' && (
+                                    <div className="bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-slate-100">
+                                        <div className="p-8 border-b flex justify-between items-center">
+                                            <h2 className="text-2xl font-black text-indigo-900 uppercase tracking-tighter">{selectedClass.name} / ÖĞRENCİ LİSTESİ</h2>
+                                            <button onClick={() => checkAccess(addStudents)} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">Hızlı Ekle</button>
+                                        </div>
+                                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {students.map((s, idx) => (
+                                                <div key={s.id} className="bg-slate-50 p-5 rounded-2xl flex justify-between items-center border border-slate-100">
+                                                    <span className="font-bold text-slate-700">{idx+1}. {s.name}</span>
+                                                    <button onClick={() => {
+                                                        const newList = students.filter(x => x.id !== s.id);
+                                                        setStudents(newList);
+                                                        localStorage.setItem(`s_${selectedClass.id}`, JSON.stringify(newList));
+                                                    }} className="text-red-300 hover:text-red-500"><XCircle size={20}/></button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {currentPage === 'homework' && (
+                                    <div className="bg-white rounded-[2.5rem] p-8 shadow-xl">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <h2 className="text-2xl font-black text-indigo-900">ÖDEV TAKİBİ</h2>
+                                            <button onClick={() => checkAccess(addHomework)} className="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-200">+ Yeni Ödev Tanımla</button>
+                                        </div>
+                                        <div className="grid gap-4">
+                                            {homeworks.map(hw => (
+                                                <div key={hw.id} className="p-6 bg-slate-50 rounded-2xl border flex justify-between items-center">
+                                                    <div>
+                                                        <h3 className="font-bold text-lg text-slate-800">{hw.title}</h3>
+                                                        <p className="text-xs text-slate-400 font-bold">{hw.date}</p>
+                                                    </div>
+                                                    <button className="text-indigo-600 font-bold hover:underline">Kontrol Et</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentPage === 'wheel' && (
+                                    <div className="bg-indigo-900 rounded-[3rem] p-12 text-center text-white shadow-2xl flex flex-col items-center">
+                                        <div style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 3s cubic-bezier(0.15, 0, 0.15, 1)' }} 
+                                            className="w-72 h-72 md:w-96 md:h-96 rounded-full border-[12px] border-white/10 flex items-center justify-center relative bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl mb-10">
+                                            <Star size={100} className="opacity-10" />
+                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-8 h-12 bg-yellow-400" style={{clipPath:'polygon(50% 100%, 0 0, 100% 0)'}}></div>
+                                        </div>
+                                        <button onClick={() => {
+                                            const r = rotation + 1800 + Math.random() * 360;
+                                            setRotation(r);
+                                            setTimeout(() => {
+                                                const winner = students[Math.floor(Math.random() * students.length)];
+                                                setLastWinner(winner);
+                                            }, 3000);
+                                        }} className="bg-yellow-400 text-indigo-950 px-16 py-5 rounded-[2rem] font-black text-2xl hover:scale-105 transition shadow-2xl shadow-yellow-400/20">ÇARKIBEŞER!</button>
+                                        {lastWinner && <h2 className="mt-10 text-5xl font-black text-yellow-400 animate-bounce tracking-tighter">{lastWinner.name}</h2>}
+                                    </div>
+                                )}
+                                
+                                {currentPage === 'leaderboard' && (
+                                    <div className="max-w-3xl mx-auto space-y-4">
+                                        <h2 className="text-center text-3xl font-black text-slate-800 mb-8 uppercase tracking-widest italic">🏆 Başarı Sıralaması</h2>
+                                        {students.sort((a,b)=>b.points-a.points).map((s, idx) => (
+                                            <div key={s.id} className="bg-white p-6 rounded-[2rem] flex justify-between items-center shadow-sm border-l-[12px] border-indigo-600">
+                                                <div className="flex items-center gap-6">
+                                                    <span className="text-3xl font-black text-slate-200">#{idx+1}</span>
+                                                    <span className="text-xl font-extrabold text-slate-700">{s.name}</span>
+                                                </div>
+                                                <div className="bg-indigo-50 px-8 py-3 rounded-2xl">
+                                                    <span className="text-2xl font-black text-indigo-600">{s.points} XP</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </main>
@@ -156,7 +238,7 @@
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<TeacherAssistantPro />);
+        root.render(<App />);
     </script>
 </body>
 </html>
