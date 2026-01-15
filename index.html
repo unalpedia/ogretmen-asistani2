@@ -3,89 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistan Pro - Tam Sürüm</title>
+    <title>Asistan Pro - Orijinal Sürüm</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
-        .wheel-container { transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1); }
-        .tab-active { background-color: white; color: #4338ca; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .wheel-rotate { transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { 
-          Lock, Plus, Trash2, Edit, Save, X, Search, Upload, CheckCircle, XCircle, 
-          MinusCircle, Award, TrendingUp, TrendingDown, BarChart, Users, Target, 
-          RotateCw, Undo, Trophy, Star, Zap, FileText, Printer, BookOpen, Crown, MessageSquare, Eye, EyeOff
-        } = lucide;
+        const { useState, useEffect, useRef } = React;
 
+        // Orijinal Bileşen Başlangıcı
         function TeacherAssistantPro() {
-            // --- STATE YÖNETİMİ ---
             const [currentPage, setCurrentPage] = useState('dashboard');
             const [selectedClass, setSelectedClass] = useState(null);
             const [classes, setClasses] = useState([]);
             const [students, setStudents] = useState([]);
             const [homeworks, setHomeworks] = useState([]);
-            const [exams, setExams] = useState([]);
             const [isLocked, setIsLocked] = useState(true);
-            const [privacyMode, setPrivacyMode] = useState(false);
-            const [lastWinner, setLastWinner] = useState(null);
             const [rotation, setRotation] = useState(0);
-            const [showAddClass, setShowAddClass] = useState(false);
+            const [lastWinner, setLastWinner] = useState(null);
+            const [showAddClassForm, setShowAddClassForm] = useState(false);
+            const [newClassName, setNewClassName] = useState('');
+            
             const TEACHER_PIN = "1234";
 
-            // Verileri Yükle
+            // Veri Yönetimi (Local Storage)
             useEffect(() => {
-                const saved = localStorage.getItem('asistan_pro_main_data');
-                if (saved) setClasses(JSON.parse(saved));
+                const savedClasses = localStorage.getItem('classes_pro');
+                if (savedClasses) setClasses(JSON.parse(savedClasses));
             }, []);
 
             useEffect(() => {
                 if (selectedClass) {
-                    const s = localStorage.getItem(`students_${selectedClass.id}`);
-                    const h = localStorage.getItem(`homeworks_${selectedClass.id}`);
+                    const s = localStorage.getItem(`students_pro_${selectedClass.id}`);
+                    const h = localStorage.getItem(`homeworks_pro_${selectedClass.id}`);
                     setStudents(s ? JSON.parse(s) : []);
                     setHomeworks(h ? JSON.parse(h) : []);
-                    lucide.createIcons();
                 }
-            }, [selectedClass]);
+                // İkonları her sayfa değişiminde yenile
+                setTimeout(() => lucide.createIcons(), 100);
+            }, [selectedClass, currentPage]);
 
-            // Erişim Kontrolü
-            const withAccess = (action) => {
+            const checkAccess = (action) => {
                 if (!isLocked) { action(); return; }
-                const pin = prompt("Öğretmen PIN kodunu giriniz:");
-                if (pin === TEACHER_PIN) { setIsLocked(false); action(); }
+                const pin = prompt("İşlem için PIN girin:");
+                if (pin === TEACHER_PIN) { setIsLocked(false); action(); } 
                 else { alert("Hatalı PIN!"); }
             };
 
-            // Sınıf İşlemleri
-            const handleAddClass = (name) => {
-                const updated = [...classes, { id: Date.now(), name, term: '2025-2026' }];
-                setClasses(updated);
-                localStorage.setItem('asistan_pro_main_data', JSON.stringify(updated));
-                setShowAddClass(false);
+            const saveClasses = (newList) => {
+                setClasses(newList);
+                localStorage.setItem('classes_pro', JSON.stringify(newList));
             };
 
-            const handleDeleteClass = (id, e) => {
+            const deleteClass = (id, e) => {
                 e.stopPropagation();
-                withAccess(() => {
+                checkAccess(() => {
                     if(confirm("Sınıfı silmek istediğinize emin misiniz?")) {
-                        const updated = classes.filter(c => c.id !== id);
-                        setClasses(updated);
-                        localStorage.setItem('asistan_pro_main_data', JSON.stringify(updated));
+                        const newList = classes.filter(c => c.id !== id);
+                        saveClasses(newList);
                     }
                 });
             };
 
-            // Skor Hesaplama (Orijinal Mantık)
             const getFinalScore = (s) => {
                 let hwPts = 0;
                 homeworks.forEach(h => { if(h.results?.[s.id] === 'done') hwPts += 10; });
@@ -93,122 +82,81 @@
             };
 
             return (
-                <div className="min-h-screen pb-12">
-                    {/* Üst Navigasyon */}
+                <div className="min-h-screen">
+                    {/* Üst Menü - Orijinal Tasarım */}
                     <nav className="bg-indigo-700 text-white p-4 sticky top-0 z-50 shadow-lg">
                         <div className="max-w-7xl mx-auto flex justify-between items-center">
                             <h1 className="text-xl font-black flex items-center gap-2 cursor-pointer" onClick={() => {setCurrentPage('dashboard'); setSelectedClass(null);}}>
                                 🎓 ASİSTAN <span className="bg-white/20 px-2 py-0.5 rounded text-xs">PRO</span>
                             </h1>
-                            <div className="flex gap-3">
-                                <button onClick={() => setPrivacyMode(!privacyMode)} className="p-2 hover:bg-white/10 rounded-lg">
-                                    {privacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                                <button onClick={() => isLocked ? withAccess(()=>{}) : setIsLocked(true)} 
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition ${isLocked ? 'bg-red-500/20 text-red-200' : 'bg-green-500 text-white'}`}>
-                                    {isLocked ? <Lock size={18}/> : <RotateCw size={18}/>}
-                                    <span>{isLocked ? "KİLİTLİ" : "AÇIK"}</span>
+                            <div className="flex gap-2">
+                                {selectedClass && ['students', 'homework', 'wheel', 'leaderboard'].map(tab => (
+                                    <button key={tab} onClick={() => setCurrentPage(tab)} className={`px-3 py-1 rounded-lg text-sm font-bold ${currentPage===tab?'bg-white text-indigo-700':'hover:bg-indigo-600'}`}>
+                                        {tab.toUpperCase()}
+                                    </button>
+                                ))}
+                                <button onClick={() => isLocked ? checkAccess(()=>{}) : setIsLocked(true)} className={`ml-4 px-4 py-1 rounded-xl font-bold ${isLocked?'bg-red-500':'bg-green-500'}`}>
+                                    {isLocked ? "KİLİTLİ" : "AÇIK"}
                                 </button>
                             </div>
                         </div>
                     </nav>
 
-                    <main className="max-w-7xl mx-auto p-4 md:p-8">
+                    <main className="max-w-7xl mx-auto p-6">
                         {currentPage === 'dashboard' && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <button onClick={() => withAccess(() => setShowAddClass(true))} className="h-48 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition bg-white/50">
-                                    <Plus size={48}/> <span className="font-bold mt-2 text-xl">Yeni Sınıf Ekle</span>
-                                </button>
+                                <div onClick={() => checkAccess(() => setShowAddClassForm(true))} className="border-4 border-dashed border-slate-300 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-500 cursor-pointer transition bg-white/50 font-bold">
+                                    <i data-lucide="plus" className="w-12 h-12"></i>
+                                    <span>Yeni Sınıf Ekle</span>
+                                </div>
                                 {classes.map(c => (
-                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} className="bg-white p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl cursor-pointer transition border-b-8 border-indigo-600 group relative">
-                                        <button onClick={(e) => handleDeleteClass(c.id, e)} className="absolute top-4 right-4 text-red-300 opacity-0 group-hover:opacity-100 transition">
-                                            <Trash2 size={24}/>
-                                        </button>
-                                        <div className="bg-indigo-50 w-12 h-12 rounded-xl flex items-center justify-center text-indigo-600 mb-4"><Users size={28}/></div>
+                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl cursor-pointer transition border-b-8 border-indigo-600 relative group">
+                                        <button onClick={(e) => deleteClass(c.id, e)} className="absolute top-4 right-4 text-red-300 opacity-0 group-hover:opacity-100 transition"><i data-lucide="trash-2"></i></button>
                                         <h3 className="text-2xl font-black text-slate-800">{c.name}</h3>
-                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mt-2">{c.term}</p>
+                                        <p className="text-slate-400 font-bold text-xs uppercase mt-2 tracking-widest">2025-2026 Dönemi</p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {selectedClass && (
-                            <div className="space-y-6">
-                                {/* Alt Menü */}
-                                <div className="flex gap-2 overflow-x-auto p-2 bg-slate-200/50 rounded-2xl w-fit">
-                                    {['students', 'homework', 'wheel', 'leaderboard', 'exams', 'report'].map(tab => (
-                                        <button key={tab} onClick={() => setCurrentPage(tab)} className={`px-6 py-2 rounded-xl font-bold transition text-sm ${currentPage===tab ? 'tab-active' : 'text-slate-500'}`}>
-                                            {tab === 'students' ? 'LİSTE' : tab === 'homework' ? 'ÖDEV' : tab === 'wheel' ? 'KURA' : tab === 'leaderboard' ? 'SKOR' : tab === 'exams' ? 'DENEME' : 'KARNE'}
-                                        </button>
-                                    ))}
+                        {/* Diğer Modüller (Kura, Skor vb.) Buraya Gelecek */}
+                        {selectedClass && currentPage === 'wheel' && (
+                            <div className="bg-indigo-900 rounded-[3rem] p-12 text-center text-white shadow-2xl">
+                                <div style={{ transform: `rotate(${rotation}deg)` }} className="w-64 h-64 rounded-full border-8 border-white/20 mx-auto flex items-center justify-center wheel-rotate mb-8 bg-indigo-800">
+                                    <i data-lucide="trophy" className="w-24 h-24 opacity-20"></i>
                                 </div>
+                                <button onClick={() => {
+                                    const r = rotation + 1800 + Math.random()*360;
+                                    setRotation(r);
+                                    setTimeout(() => setLastWinner(students[Math.floor(Math.random()*students.length)]), 3000);
+                                }} className="bg-yellow-400 text-indigo-900 px-12 py-4 rounded-2xl font-black text-2xl">ÇEVİR!</button>
+                                {lastWinner && <h2 className="mt-8 text-4xl font-black text-yellow-400">{lastWinner.firstName || lastWinner.text}</h2>}
+                            </div>
+                        )}
 
-                                {/* Orijinal Çark Modülü */}
-                                {currentPage === 'wheel' && (
-                                    <div className="grid md:grid-cols-2 gap-8 items-center bg-indigo-900 p-12 rounded-[3rem] text-white">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-0 h-0 border-l-[15px] border-transparent border-r-[15px] border-transparent border-t-[30px] border-t-yellow-400 mb-2 z-10"></div>
-                                            <div style={{ transform: `rotate(${rotation}deg)` }} className="w-80 h-80 rounded-full border-8 border-white/20 bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center wheel-container shadow-2xl">
-                                                <Trophy size={80} className="opacity-20"/>
-                                            </div>
-                                            <button onClick={() => {
-                                                const r = rotation + 1800 + Math.random() * 360;
-                                                setRotation(r);
-                                                setTimeout(() => {
-                                                    const winner = students[Math.floor(Math.random()*students.length)];
-                                                    setLastWinner(winner);
-                                                }, 3000);
-                                            }} className="mt-8 bg-yellow-400 text-indigo-900 px-12 py-4 rounded-2xl font-black text-2xl shadow-xl hover:scale-105 active:scale-95 transition">ÇEVİR!</button>
-                                        </div>
-                                        <div className="bg-white/10 p-10 rounded-[2rem] text-center border border-white/10">
-                                            {lastWinner ? (
-                                                <div className="animate-bounce">
-                                                    <p className="text-yellow-400 font-bold mb-2">TALİHLİ</p>
-                                                    <h2 className="text-5xl font-black">{lastWinner.name || lastWinner.firstName + " " + lastWinner.lastName}</h2>
-                                                </div>
-                                            ) : <h2 className="text-2xl font-bold opacity-30 italic">Henüz kura çekilmedi</h2>}
-                                        </div>
+                        {/* Sınıf Ekleme Formu (Modal) */}
+                        {showAddClassForm && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-[100]">
+                                <div className="bg-white p-8 rounded-[2rem] w-full max-w-md">
+                                    <h2 className="text-2xl font-black mb-4">Sınıf Adı</h2>
+                                    <input type="text" onChange={(e)=>setNewClassName(e.target.value)} className="w-full p-4 border-2 rounded-xl mb-4" placeholder="Örn: 9-A" />
+                                    <div className="flex gap-2">
+                                        <button onClick={() => {
+                                            saveClasses([...classes, {id: Date.now(), name: newClassName}]);
+                                            setShowAddClassForm(false);
+                                        }} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">Kaydet</button>
+                                        <button onClick={()=>setShowAddClassForm(false)} className="px-6 py-3 bg-slate-100 rounded-xl font-bold">İptal</button>
                                     </div>
-                                )}
-
-                                {/* Liderlik Tablosu */}
-                                {currentPage === 'leaderboard' && (
-                                    <div className="max-w-3xl mx-auto space-y-4">
-                                        {students.map(s => ({...s, score: getFinalScore(s)})).sort((a,b)=>b.score-a.score).map((s, idx) => (
-                                            <div key={s.id} className="bg-white p-6 rounded-2xl shadow-sm flex justify-between items-center border-l-8 border-indigo-500">
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-3xl font-black text-slate-200">#{idx+1}</span>
-                                                    <span className="text-xl font-bold">{s.name || s.firstName + " " + s.lastName}</span>
-                                                </div>
-                                                <div className="text-2xl font-black text-indigo-600">{privacyMode ? '***' : s.score} XP</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                </div>
                             </div>
                         )}
                     </main>
-
-                    {/* Sınıf Ekleme Modal */}
-                    {showAddClass && (
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
-                                <h2 className="text-2xl font-black mb-6">Yeni Sınıf</h2>
-                                <input id="cn" type="text" placeholder="Sınıf Adı (Örn: 10-A)" className="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 focus:border-indigo-500 outline-none font-bold" />
-                                <div className="flex gap-3">
-                                    <button onClick={() => handleAddClass(document.getElementById('cn').value)} className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold">Kaydet</button>
-                                    <button onClick={() => setShowAddClass(false)} className="px-6 bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold">İptal</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<TeacherAssistantPro />);
-        setTimeout(() => lucide.createIcons(), 500);
     </script>
 </body>
 </html>
