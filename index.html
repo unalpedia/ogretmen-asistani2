@@ -5,202 +5,89 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Öğretmen Asistanı Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide-react@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        body { font-family: sans-serif; background-color: #f1f5f9; }
+        .card { background: white; border-radius: 1.5rem; padding: 2rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
 </head>
-<body class="bg-slate-100">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const { 
-            Lock, Unlock, Plus, Trash2, CheckCircle, XCircle, 
-            Users, RotateCw, Trophy, Download, Eye, EyeOff, BookOpen, Zap 
-        } = lucideReact;
 
-        function TeacherAssistantPro() {
-            const [currentPage, setCurrentPage] = useState('dashboard');
-            const [selectedClass, setSelectedClass] = useState(null);
-            const [classes, setClasses] = useState([]);
+        function App() {
             const [students, setStudents] = useState([]);
-            const [homeworks, setHomeworks] = useState([]);
-            const [isLocked, setIsLocked] = useState(true);
-            const [privacyMode, setPrivacyMode] = useState(false);
-            const [wheelRemaining, setWheelRemaining] = useState([]);
-            const [lastWinner, setLastWinner] = useState(null);
-            const [rotation, setRotation] = useState(0);
-            const TEACHER_PIN = "1234";
-
-            // LocalStorage kullanarak verileri sakla
-            useEffect(() => {
-                const savedClasses = localStorage.getItem('classes_pro');
-                if (savedClasses) setClasses(JSON.parse(savedClasses));
-            }, []);
-
-            useEffect(() => {
-                if (selectedClass) {
-                    const s = localStorage.getItem(`students_${selectedClass.id}`);
-                    const h = localStorage.getItem(`homeworks_${selectedClass.id}`);
-                    setStudents(s ? JSON.parse(s) : []);
-                    setHomeworks(h ? JSON.parse(h) : []);
-                    setWheelRemaining(s ? JSON.parse(s) : []);
-                }
-            }, [selectedClass]);
-
-            const checkAccess = (action) => {
-                if (!isLocked) { action(); return; }
-                const pin = prompt("PIN kodunu giriniz:");
-                if (pin === TEACHER_PIN) {
-                    setIsLocked(false);
-                    action();
-                    setTimeout(() => setIsLocked(true), 300000);
-                } else { alert("Hatalı PIN!"); }
-            };
-
-            const getFinalScore = (s) => {
-                let pts = (s.wheelPoints || 0);
-                homeworks.forEach(h => { if(h.results?.[s.id] === 'done') pts += 10; });
-                return pts;
-            };
+            const [className, setClassName] = useState("Sınıf Seçilmedi");
 
             return (
-                <div className="min-h-screen pb-20">
-                    {/* NAV */}
-                    <nav className="bg-indigo-900 text-white p-4 sticky top-0 z-50 shadow-xl">
-                        <div className="max-w-7xl mx-auto flex justify-between items-center">
-                            <h1 className="text-xl font-black cursor-pointer" onClick={() => {setCurrentPage('dashboard'); setSelectedClass(null);}}>
-                                🎓 ASİSTAN <span className="text-amber-400">PRO</span>
-                            </h1>
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setPrivacyMode(!privacyMode)} className="p-2 hover:bg-white/10 rounded-xl transition">
-                                    {privacyMode ? <EyeOff size={24} className="text-amber-400"/> : <Eye size={24}/>}
+                <div className="min-h-screen p-4 md:p-8">
+                    <nav className="bg-indigo-900 text-white p-6 rounded-3xl mb-8 shadow-xl flex justify-between items-center">
+                        <h1 className="text-2xl font-black">🎓 ASİSTAN PRO</h1>
+                        <div className="bg-white/20 px-4 py-2 rounded-xl text-sm font-bold">Hoş Geldiniz 👋</div>
+                    </nav>
+
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="card text-center border-t-8 border-indigo-600">
+                            <h2 className="text-3xl font-black text-slate-800 mb-2">Hızlı Başlangıç</h2>
+                            <p className="text-slate-500 mb-6 font-medium">Sistemi kullanmaya başlamak için bir sınıf ismi girin.</p>
+                            
+                            <div className="flex flex-col md:flex-row gap-4 justify-center">
+                                <button 
+                                    onClick={() => {
+                                        const name = prompt("Sınıf Adı Girin (Örn: 9-A):");
+                                        if(name) setClassName(name);
+                                    }}
+                                    className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
+                                >
+                                    Sınıf Oluştur
                                 </button>
-                                <button onClick={() => isLocked ? checkAccess(()=>{}) : setIsLocked(true)} 
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold ${isLocked ? 'bg-red-500/20 text-red-400' : 'bg-green-500 text-white'}`}>
-                                    {isLocked ? <Lock size={18}/> : <Unlock size={18}/>}
-                                    <span>{isLocked ? "KİLİTLİ" : "AÇIK"}</span>
+                                
+                                <button 
+                                    onClick={() => {
+                                        const list = prompt("Öğrenci No ve Adı (Her satıra bir kişi):");
+                                        if(list) {
+                                            const parsed = list.split('\n').map(item => ({name: item, id: Math.random()}));
+                                            setStudents(parsed);
+                                        }
+                                    }}
+                                    className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200"
+                                >
+                                    Öğrenci Listesi Yapıştır
                                 </button>
                             </div>
                         </div>
-                    </nav>
 
-                    <main className="max-w-7xl mx-auto p-4 md:p-8">
-                        {currentPage === 'dashboard' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <button onClick={() => checkAccess(() => {
-                                    const name = prompt("Sınıf Adı?");
-                                    if(name) {
-                                        const updated = [...classes, {id: Date.now(), name}];
-                                        setClasses(updated);
-                                        localStorage.setItem('classes_pro', JSON.stringify(updated));
-                                    }
-                                })} className="h-44 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition">
-                                    <Plus size={48}/> <span className="font-bold">Yeni Sınıf</span>
-                                </button>
-                                {classes.map(c => (
-                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} className="bg-white p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl cursor-pointer transition flex items-center gap-4">
-                                        <div className="bg-indigo-100 p-4 rounded-2xl text-indigo-600"><Users size={32}/></div>
-                                        <h3 className="text-2xl font-black">{c.name}</h3>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {selectedClass && (
-                            <div className="space-y-6">
-                                <div className="flex gap-2 overflow-x-auto p-2 bg-white rounded-2xl shadow-sm">
-                                    {['students', 'homework', 'wheel', 'leaderboard'].map(p => (
-                                        <button key={p} onClick={() => setCurrentPage(p)} className={`px-6 py-3 rounded-xl font-bold transition ${currentPage===p?'bg-indigo-600 text-white':'text-slate-500'}`}>
-                                            {p === 'students' ? 'Liste' : p === 'homework' ? 'Ödev' : p === 'wheel' ? 'Çark' : '🏆 Sıralama'}
-                                        </button>
+                        {students.length > 0 && (
+                            <div className="card animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <h3 className="text-xl font-black text-indigo-900 mb-4 border-b pb-2">
+                                    📍 {className} Öğrenci Listesi
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {students.map((s, idx) => (
+                                        <div key={s.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-bold text-slate-700 flex justify-between">
+                                            <span>{idx + 1}. {s.name}</span>
+                                            <span className="text-indigo-400">#öğrenci</span>
+                                        </div>
                                     ))}
                                 </div>
-
-                                {currentPage === 'students' && (
-                                    <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border">
-                                        <div className="p-6 border-b flex justify-between items-center bg-slate-50">
-                                            <h2 className="text-xl font-black">Öğrenci Listesi</h2>
-                                            <button onClick={() => checkAccess(() => {
-                                                const raw = prompt("No İsim Soyisim (Her satıra bir kişi)");
-                                                if(raw) {
-                                                  const parsed = raw.split('\n').filter(l=>l).map(l=>{
-                                                    const p = l.split(' ');
-                                                    return {id: Math.random(), studentNumber: p[0], firstName: p[1], lastName: p.slice(2).join(' ')};
-                                                  });
-                                                  const updated = [...students, ...parsed];
-                                                  setStudents(updated);
-                                                  localStorage.setItem(`students_${selectedClass.id}`, JSON.stringify(updated));
-                                                }
-                                            })} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">Ekle</button>
-                                        </div>
-                                        <table className="w-full text-left">
-                                            <tbody>
-                                                {students.map(s => (
-                                                    <tr key={s.id} className="border-t">
-                                                        <td className="p-4 font-bold text-indigo-600">{s.studentNumber}</td>
-                                                        <td className="p-4 font-bold">{s.firstName} {s.lastName}</td>
-                                                        <td className="p-4 text-right">
-                                                            <button onClick={() => checkAccess(() => {
-                                                                const filtered = students.filter(x => x.id !== s.id);
-                                                                setStudents(filtered);
-                                                                localStorage.setItem(`students_${selectedClass.id}`, JSON.stringify(filtered));
-                                                            })} className="text-red-400"><Trash2 size={20}/></button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-
-                                {currentPage === 'wheel' && (
-                                    <div className="flex flex-col items-center justify-center bg-indigo-900 p-12 rounded-[3rem] text-white shadow-2xl min-h-[500px]">
-                                        <div style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 3s ease-out' }} 
-                                            className="w-64 h-64 md:w-80 md:h-80 rounded-full border-8 border-white/20 flex items-center justify-center mb-8 relative">
-                                            <Trophy size={64} className="text-white/20"/>
-                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-6 h-8 bg-amber-400" style={{clipPath: 'polygon(50% 100%, 0 0, 100% 0)'}}></div>
-                                        </div>
-                                        <button onClick={() => {
-                                            const extra = 1800 + Math.random() * 360;
-                                            setRotation(rotation + extra);
-                                            setTimeout(() => {
-                                                const winner = students[Math.floor(Math.random() * students.length)];
-                                                setLastWinner(winner);
-                                            }, 3000);
-                                        }} className="bg-amber-400 text-indigo-900 px-12 py-4 rounded-2xl font-black text-2xl">ÇEVİR!</button>
-                                        {lastWinner && <h2 className="mt-8 text-4xl font-black text-amber-400 animate-bounce">{lastWinner.firstName}</h2>}
-                                    </div>
-                                )}
-
-                                {currentPage === 'leaderboard' && (
-                                    <div className="max-w-2xl mx-auto space-y-4">
-                                        {students.map(s => ({...s, score: getFinalScore(s)}))
-                                            .sort((a,b)=>b.score-a.score).map((s, idx) => (
-                                            <div key={s.id} className="bg-white p-6 rounded-2xl shadow-sm flex justify-between items-center border-l-8 border-indigo-500">
-                                                <span className="text-xl font-black text-slate-300">#{idx+1}</span>
-                                                <span className="font-bold text-lg">{s.firstName} {s.lastName}</span>
-                                                <span className="text-2xl font-black text-indigo-600">{privacyMode ? '***' : s.score} XP</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         )}
-                    </main>
+                    </div>
+                    
+                    <footer className="text-center mt-12 text-slate-400 text-xs font-bold uppercase tracking-widest">
+                        Tüm veriler tarayıcıda saklanır • 2026 Asistan Pro
+                    </footer>
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<TeacherAssistantPro />);
+        root.render(<App />);
     </script>
 </body>
 </html>
