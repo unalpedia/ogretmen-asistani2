@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Öğretmen Asistanı Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f1f5f9; }
-        .card { background: white; border-radius: 1.5rem; padding: 2rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -19,75 +20,161 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
+        const { Lock, Unlock, Plus, Trash2, CheckCircle, XCircle, Users, RotateCw, Trophy, Eye, EyeOff, Download } = lucide;
 
         function App() {
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [selectedClass, setSelectedClass] = useState(null);
+            const [classes, setClasses] = useState([]);
             const [students, setStudents] = useState([]);
-            const [className, setClassName] = useState("Sınıf Seçilmedi");
+            const [homeworks, setHomeworks] = useState([]);
+            const [isLocked, setIsLocked] = useState(true);
+            const [privacyMode, setPrivacyMode] = useState(false);
+            const [lastWinner, setLastWinner] = useState(null);
+            const TEACHER_PIN = "1234";
+
+            // Verileri Yükle
+            useEffect(() => {
+                const data = localStorage.getItem('asistan_data');
+                if (data) setClasses(JSON.parse(data));
+            }, []);
+
+            useEffect(() => {
+                if (selectedClass) {
+                    const s = localStorage.getItem(`students_${selectedClass.id}`);
+                    const h = localStorage.getItem(`homeworks_${selectedClass.id}`);
+                    setStudents(s ? JSON.parse(s) : []);
+                    setHomeworks(h ? JSON.parse(h) : []);
+                }
+            }, [selectedClass]);
+
+            const checkAccess = (action) => {
+                if (!isLocked) { action(); return; }
+                const pin = prompt("Öğretmen PIN Kodunu Giriniz:");
+                if (pin === TEACHER_PIN) { setIsLocked(false); action(); } 
+                else { alert("Yetkisiz Erişim!"); }
+            };
+
+            const saveStudents = (newData) => {
+                setStudents(newData);
+                localStorage.setItem(`students_${selectedClass.id}`, JSON.stringify(newData));
+            };
+
+            const getScore = (studentId) => {
+                let pts = 0;
+                homeworks.forEach(h => { if(h.results?.[studentId] === 'done') pts += 10; });
+                return pts;
+            };
 
             return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <nav className="bg-indigo-900 text-white p-6 rounded-3xl mb-8 shadow-xl flex justify-between items-center">
-                        <h1 className="text-2xl font-black">🎓 ASİSTAN PRO</h1>
-                        <div className="bg-white/20 px-4 py-2 rounded-xl text-sm font-bold">Hoş Geldiniz 👋</div>
+                <div className="min-h-screen">
+                    {/* ÜST PANEL */}
+                    <nav className="bg-indigo-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-2xl">
+                        <h1 className="text-xl font-extrabold tracking-tighter cursor-pointer" onClick={() => {setCurrentPage('dashboard'); setSelectedClass(null);}}>
+                            🎓 ASİSTAN <span className="text-amber-400">PRO</span>
+                        </h1>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setPrivacyMode(!privacyMode)} className="p-2 hover:bg-white/10 rounded-xl">
+                                {privacyMode ? <i data-lucide="eye-off" class="text-amber-400"></i> : <i data-lucide="eye"></i>}
+                            </button>
+                            <button onClick={() => isLocked ? checkAccess(()=>{}) : setIsLocked(true)} 
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition ${isLocked ? 'bg-red-500/20 text-red-300' : 'bg-green-500 text-white'}`}>
+                                {isLocked ? "KİLİTLİ" : "AÇIK"}
+                            </button>
+                        </div>
                     </nav>
 
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="card text-center border-t-8 border-indigo-600">
-                            <h2 className="text-3xl font-black text-slate-800 mb-2">Hızlı Başlangıç</h2>
-                            <p className="text-slate-500 mb-6 font-medium">Sistemi kullanmaya başlamak için bir sınıf ismi girin.</p>
-                            
-                            <div className="flex flex-col md:flex-row gap-4 justify-center">
-                                <button 
-                                    onClick={() => {
-                                        const name = prompt("Sınıf Adı Girin (Örn: 9-A):");
-                                        if(name) setClassName(name);
-                                    }}
-                                    className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
-                                >
-                                    Sınıf Oluştur
-                                </button>
-                                
-                                <button 
-                                    onClick={() => {
-                                        const list = prompt("Öğrenci No ve Adı (Her satıra bir kişi):");
-                                        if(list) {
-                                            const parsed = list.split('\n').map(item => ({name: item, id: Math.random()}));
-                                            setStudents(parsed);
-                                        }
-                                    }}
-                                    className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200"
-                                >
-                                    Öğrenci Listesi Yapıştır
-                                </button>
-                            </div>
-                        </div>
-
-                        {students.length > 0 && (
-                            <div className="card animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <h3 className="text-xl font-black text-indigo-900 mb-4 border-b pb-2">
-                                    📍 {className} Öğrenci Listesi
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {students.map((s, idx) => (
-                                        <div key={s.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-bold text-slate-700 flex justify-between">
-                                            <span>{idx + 1}. {s.name}</span>
-                                            <span className="text-indigo-400">#öğrenci</span>
-                                        </div>
-                                    ))}
+                    <main className="max-w-6xl mx-auto p-6">
+                        {currentPage === 'dashboard' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div onClick={() => checkAccess(() => {
+                                    const n = prompt("Sınıf Adı?");
+                                    if(n) {
+                                        const updated = [...classes, {id: Date.now(), name: n}];
+                                        setClasses(updated);
+                                        localStorage.setItem('asistan_data', JSON.stringify(updated));
+                                    }
+                                })} className="h-44 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-500 cursor-pointer transition">
+                                    <span className="text-4xl">+</span>
+                                    <span className="font-bold">Yeni Sınıf</span>
                                 </div>
+                                {classes.map(c => (
+                                    <div key={c.id} onClick={() => { setSelectedClass(c); setCurrentPage('students'); }} className="bg-white p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl cursor-pointer transition border-b-8 border-indigo-500">
+                                        <h3 className="text-2xl font-black">{c.name}</h3>
+                                        <p className="text-slate-400">Öğrenci Listesi & Takip</p>
+                                    </div>
+                                ))}
                             </div>
                         )}
-                    </div>
-                    
-                    <footer className="text-center mt-12 text-slate-400 text-xs font-bold uppercase tracking-widest">
-                        Tüm veriler tarayıcıda saklanır • 2026 Asistan Pro
-                    </footer>
+
+                        {selectedClass && (
+                            <div className="space-y-6">
+                                <div className="flex gap-2 overflow-x-auto p-2 glass rounded-2xl shadow-sm">
+                                    {['students', 'homework', 'wheel', 'leaderboard'].map(p => (
+                                        <button key={p} onClick={() => setCurrentPage(p)} className={`px-6 py-2 rounded-xl font-bold transition ${currentPage===p?'bg-indigo-600 text-white shadow-lg':'text-slate-500'}`}>
+                                            {p.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {currentPage === 'students' && (
+                                    <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border">
+                                        <div className="p-8 border-b flex justify-between items-center">
+                                            <h2 className="text-2xl font-black uppercase tracking-tight">{selectedClass.name} - Liste</h2>
+                                            <button onClick={() => checkAccess(() => {
+                                                const list = prompt("No İsim Soyisim (Alt alta yapıştır):");
+                                                if(list) {
+                                                    const p = list.split('\n').filter(l=>l).map(l => ({id: Math.random(), text: l}));
+                                                    saveStudents([...students, ...p]);
+                                                }
+                                            })} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold">+ Ekle</button>
+                                        </div>
+                                        <div className="divide-y">
+                                            {students.map(s => (
+                                                <div key={s.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
+                                                    <span className="font-bold text-lg">{s.text}</span>
+                                                    <button onClick={() => checkAccess(() => saveStudents(students.filter(x=>x.id!==s.id)))} className="text-red-300 hover:text-red-500">Sil</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentPage === 'wheel' && (
+                                    <div className="bg-indigo-900 rounded-[3rem] p-12 text-center text-white shadow-2xl">
+                                        <div className="w-64 h-64 border-8 border-white/10 rounded-full mx-auto mb-8 flex items-center justify-center">
+                                            <span className="text-6xl">🎡</span>
+                                        </div>
+                                        <button onClick={() => {
+                                            const w = students[Math.floor(Math.random()*students.length)];
+                                            setLastWinner(w);
+                                        }} className="bg-amber-400 text-indigo-950 px-12 py-4 rounded-2xl font-black text-2xl hover:scale-105 transition">KURA ÇEK!</button>
+                                        {lastWinner && <h2 className="mt-8 text-4xl font-black text-amber-400 animate-bounce">{lastWinner.text}</h2>}
+                                    </div>
+                                )}
+
+                                {currentPage === 'leaderboard' && (
+                                    <div className="space-y-4">
+                                        {students.map(s => ({...s, score: getScore(s.id)})).sort((a,b)=>b.score-a.score).map((s, idx) => (
+                                            <div key={s.id} className="bg-white p-6 rounded-2xl flex justify-between items-center shadow-sm border-l-8 border-indigo-500">
+                                                <span className="font-black text-slate-300 text-2xl">#{idx+1}</span>
+                                                <span className="font-bold text-xl">{s.text}</span>
+                                                <span className="text-2xl font-black text-indigo-600">{privacyMode ? '***' : s.score} XP</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+        // İkonları çalıştır
+        setTimeout(() => lucide.createIcons(), 500);
     </script>
 </body>
 </html>
