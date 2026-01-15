@@ -3,155 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistan Pro - Resmi Sürüm</title>
+    <title>Asistan Pro - Master Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
-        .gradient-nav { background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); }
-        .card-shadow { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); }
-        .wheel-anim { transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+        .wheel-container { position: relative; width: 400px; height: 400px; border-radius: 50%; border: 10px solid #1e293b; overflow: hidden; transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1); shadow: 0 0 50px rgba(0,0,0,0.2); }
+        .wheel-item { position: absolute; width: 50%; height: 2px; top: 50%; left: 50%; transform-origin: left center; padding-left: 40px; font-weight: 800; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); font-size: 12px; }
+        .active-tab { background: #4338ca; color: white; box-shadow: 0 10px 15px -3px rgba(67, 56, 202, 0.3); }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // İkonlar (SVG formatında içine gömüldü - Beyaz ekranı önler)
         const Icons = {
-            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
-            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
-            Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>,
-            Users: () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+            Check: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+            X: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         };
 
         function App() {
             const [page, setPage] = useState('dashboard');
-            const [classes, setClasses] = useState([]);
-            const [selectedClass, setSelectedClass] = useState(null);
+            const [classes, setClasses] = useState(JSON.parse(localStorage.getItem('ap_cls') || '[]'));
+            const [selClass, setSelClass] = useState(null);
             const [students, setStudents] = useState([]);
-            const [isLocked, setIsLocked] = useState(true);
+            const [homeworks, setHomeworks] = useState([]);
             const [rotation, setRotation] = useState(0);
             const [winner, setWinner] = useState(null);
 
-            useEffect(() => {
-                const saved = localStorage.getItem('asistan_v3');
-                if (saved) setClasses(JSON.parse(saved));
-            }, []);
+            useEffect(() => { localStorage.setItem('ap_cls', JSON.stringify(classes)); }, [classes]);
 
             useEffect(() => {
-                if (selectedClass) {
-                    const s = localStorage.getItem(`std_${selectedClass.id}`);
-                    setStudents(s ? JSON.parse(s) : []);
+                if (selClass) {
+                    setStudents(JSON.parse(localStorage.getItem(`s_${selClass.id}`) || '[]'));
+                    setHomeworks(JSON.parse(localStorage.getItem(`h_${selClass.id}`) || '[]'));
                 }
-            }, [selectedClass]);
+            }, [selClass]);
 
-            const auth = (fn) => {
-                if (!isLocked) { fn(); return; }
-                const pin = prompt("Öğretmen PIN: (1234)");
-                if (pin === "1234") { setIsLocked(false); fn(); }
-                else { alert("Hatalı!"); }
-            };
+            const saveS = (data) => { setStudents(data); localStorage.setItem(`s_${selClass.id}`, JSON.stringify(data)); };
+            const saveH = (data) => { setHomeworks(data); localStorage.setItem(`h_${selClass.id}`, JSON.stringify(data)); };
 
-            const addClass = () => {
-                const n = prompt("Sınıf İsmi:");
-                if (n) {
-                    const newC = [...classes, {id: Date.now(), name: n}];
-                    setClasses(newC);
-                    localStorage.setItem('asistan_v3', JSON.stringify(newC));
-                }
-            };
-
-            const deleteClass = (id, e) => {
-                e.stopPropagation();
-                auth(() => {
-                    const newC = classes.filter(c => c.id !== id);
-                    setClasses(newC);
-                    localStorage.setItem('asistan_v3', JSON.stringify(newC));
-                });
-            };
-
+            const addClass = () => { const n = prompt("Sınıf Adı:"); if(n) setClasses([...classes, {id: Date.now(), name: n}]); };
+            
             const addStudents = () => {
-                const raw = prompt("Öğrenci Listesini Yapıştırın (Her satıra bir isim):");
-                if (raw) {
-                    const parsed = raw.split('\n').filter(l => l.trim()).map(l => ({id: Math.random(), name: l}));
-                    setStudents(parsed);
-                    localStorage.setItem(`std_${selectedClass.id}`, JSON.stringify(parsed));
-                }
+                const raw = prompt("İsimleri Yapıştır (Her satıra bir isim):");
+                if(raw) saveS(raw.split('\n').filter(l=>l.trim()).map(l=>({id:Math.random(), name:l, xp:0})));
+            };
+
+            const addHw = () => {
+                const t = prompt("Ödev Konusu:");
+                if(t) saveH([...homeworks, {id:Date.now(), title:t, completed:[]}]);
+            };
+
+            const toggleHw = (hwId, stdId) => {
+                const newHw = homeworks.map(h => {
+                    if(h.id === hwId) {
+                        const isDone = h.completed.includes(stdId);
+                        const nextComp = isDone ? h.completed.filter(id=>id!==stdId) : [...h.completed, stdId];
+                        // XP Güncelleme
+                        const newStd = students.map(s => s.id === stdId ? {...s, xp: s.xp + (isDone ? -10 : 10)} : s);
+                        saveS(newStd);
+                        return {...h, completed: nextComp};
+                    }
+                    return h;
+                });
+                saveH(newHw);
+            };
+
+            const spin = () => {
+                if(students.length < 2) return alert("Önce öğrenci ekleyin!");
+                const r = rotation + 1440 + Math.random()*360;
+                setRotation(r);
+                setWinner(null);
+                setTimeout(() => {
+                    const idx = Math.floor(Math.random() * students.length);
+                    setWinner(students[idx]);
+                }, 5000);
             };
 
             return (
-                <div className="min-h-screen pb-20">
-                    <nav className="gradient-nav text-white p-5 shadow-lg flex justify-between items-center">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => {setPage('dashboard'); setSelectedClass(null);}}>
-                            <span className="text-2xl font-black tracking-tighter">ASİSTAN <span className="text-yellow-400">PRO</span></span>
-                        </div>
-                        <button onClick={() => isLocked ? auth(()=>{}) : setIsLocked(true)} 
-                            className={`px-6 py-2 rounded-2xl font-bold flex items-center gap-2 transition-all ${isLocked ? 'bg-red-500/20 text-red-100 border border-red-500/50' : 'bg-green-500 shadow-lg shadow-green-500/30'}`}>
-                            <Icons.Lock /> {isLocked ? "KİLİTLİ" : "AÇIK"}
-                        </button>
+                <div className="min-h-screen">
+                    <nav className="bg-slate-900 text-white p-6 shadow-2xl flex justify-between items-center">
+                        <h1 onClick={()=>{setPage('dashboard'); setSelClass(null)}} className="text-2xl font-black cursor-pointer tracking-tighter">ASİSTAN <span className="text-indigo-500">PRO</span></h1>
+                        {selClass && <span className="bg-indigo-600 px-4 py-1 rounded-full font-bold">{selClass.name}</span>}
                     </nav>
 
-                    <main className="max-w-7xl mx-auto p-6 md:p-12">
+                    <main className="p-8 max-w-6xl mx-auto">
                         {page === 'dashboard' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                <div onClick={() => auth(addClass)} className="h-56 border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-500 cursor-pointer transition-all bg-white/50">
-                                    <Icons.Plus /> <span className="font-bold text-xl mt-2">Sınıf Ekle</span>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div onClick={addClass} className="h-40 border-4 border-dashed border-slate-300 rounded-3xl flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 cursor-pointer transition-all">
+                                    <Icons.Plus /> <span className="ml-2 font-bold uppercase">Sınıf Ekle</span>
                                 </div>
                                 {classes.map(c => (
-                                    <div key={c.id} onClick={() => {setSelectedClass(c); setPage('list');}} 
-                                        className="bg-white p-10 rounded-[3rem] card-shadow border-b-[12px] border-indigo-600 hover:-translate-y-2 transition-all cursor-pointer relative group">
-                                        <button onClick={(e) => deleteClass(c.id, e)} className="absolute top-8 right-8 text-red-300 opacity-0 group-hover:opacity-100 transition hover:text-red-500">
-                                            <Icons.Trash />
-                                        </button>
-                                        <div className="bg-indigo-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 text-indigo-600"><Icons.Users /></div>
-                                        <h3 className="text-3xl font-black text-slate-800">{c.name}</h3>
-                                        <p className="text-slate-400 font-bold mt-2 uppercase tracking-widest text-xs">Yönetmek İçin Tıklayın</p>
+                                    <div key={c.id} onClick={()=>{setSelClass(c); setPage('list')}} className="bg-white p-8 rounded-3xl shadow-lg border-b-8 border-indigo-600 hover:-translate-y-1 transition-all cursor-pointer">
+                                        <h3 className="text-2xl font-black text-slate-800">{c.name}</h3>
+                                        <p className="text-slate-400 text-sm mt-1 font-bold">YÖNETİM PANELİ</p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {selectedClass && (
-                            <div className="space-y-8">
-                                <div className="flex gap-2 p-2 bg-slate-200/50 rounded-2xl w-fit">
-                                    <button onClick={() => setPage('list')} className={`px-8 py-3 rounded-xl font-black text-sm ${page==='list'?'bg-white text-indigo-600 shadow-sm':'text-slate-500'}`}>LİSTE</button>
-                                    <button onClick={() => setPage('wheel')} className={`px-8 py-3 rounded-xl font-black text-sm ${page==='wheel'?'bg-white text-indigo-600 shadow-sm':'text-slate-500'}`}>KURA</button>
+                        {selClass && (
+                            <div className="space-y-6">
+                                <div className="flex gap-2 p-1 bg-slate-200 rounded-2xl w-fit font-bold text-xs uppercase tracking-widest">
+                                    {['list','hw','wheel','ranks'].map(t => (
+                                        <button key={t} onClick={()=>setPage(t)} className={`px-6 py-3 rounded-xl transition-all ${page===t?'active-tab':'text-slate-500'}`}>
+                                            {t==='list'?'Öğrenciler':t==='hw'?'Ödevler':t==='wheel'?'Kura': 'Sıralama'}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 {page === 'list' && (
-                                    <div className="bg-white rounded-[3rem] card-shadow overflow-hidden">
-                                        <div className="p-10 border-b flex justify-between items-center bg-slate-50/50">
-                                            <h2 className="text-2xl font-black text-indigo-900 uppercase tracking-tighter">{selectedClass.name} / ÖĞRENCİ LİSTESİ</h2>
-                                            <button onClick={() => auth(addStudents)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Hızlı Liste Ekle</button>
+                                    <div className="bg-white rounded-3xl shadow-xl p-8">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h2 className="text-xl font-black">ÖĞRENCİ LİSTESİ ({students.length})</h2>
+                                            <button onClick={addStudents} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">Hızlı Ekle</button>
                                         </div>
-                                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {students.map((s, i) => (
-                                                <div key={s.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-slate-700 flex justify-between">
-                                                    <span>{i+1}. {s.name}</span>
+                                        <div className="grid md:grid-cols-2 gap-3">
+                                            {students.map((s,i) => (
+                                                <div key={s.id} className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
+                                                    <span className="font-bold">{i+1}. {s.name}</span>
+                                                    <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg text-xs font-black">{s.xp} XP</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {page === 'wheel' && (
-                                    <div className="bg-indigo-900 rounded-[4rem] p-16 text-center text-white card-shadow flex flex-col items-center">
-                                        <div style={{transform: `rotate(${rotation}deg)`}} className="w-72 h-72 md:w-96 md:h-96 rounded-full border-[12px] border-white/10 flex items-center justify-center wheel-anim bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl mb-12 relative">
-                                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 h-12 bg-yellow-400 shadow-xl" style={{clipPath:'polygon(50% 100%, 0 0, 100% 0)'}}></div>
-                                            <span className="text-8xl opacity-20">🎡</span>
+                                {page === 'hw' && (
+                                    <div className="bg-white rounded-3xl shadow-xl p-8 overflow-x-auto">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <h2 className="text-xl font-black uppercase">Ödev Takip Matrisi</h2>
+                                            <button onClick={addHw} className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold">+ Yeni Ödev</button>
                                         </div>
-                                        <button onClick={() => {
-                                            const r = rotation + 1800 + Math.random()*360;
-                                            setRotation(r);
-                                            setTimeout(() => setWinner(students[Math.floor(Math.random()*students.length)]), 4000);
-                                        }} className="bg-yellow-400 text-indigo-950 px-20 py-6 rounded-[2.5rem] font-black text-3xl shadow-2xl hover:scale-105 transition-all active:scale-95">ÇEVİR!</button>
-                                        {winner && <div className="mt-12 text-6xl font-black text-yellow-400 animate-bounce tracking-tighter">{winner.name}</div>}
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b-2 border-slate-100">
+                                                    <th className="py-4 font-black text-slate-400 text-xs">ÖĞRENCİ</th>
+                                                    {homeworks.map(h => <th key={h.id} className="px-4 text-xs font-black text-indigo-600 uppercase">{h.title}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {students.map(s => (
+                                                    <tr key={s.id} className="border-b border-slate-50">
+                                                        <td className="py-4 font-bold text-slate-700">{s.name}</td>
+                                                        {homeworks.map(h => (
+                                                            <td key={h.id} className="px-4">
+                                                                <button onClick={()=>toggleHw(h.id, s.id)} className={`p-2 rounded-lg transition ${h.completed.includes(s.id)?'bg-emerald-100 text-emerald-600':'bg-slate-100 text-slate-300'}`}>
+                                                                    <Icons.Check />
+                                                                </button>
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {page === 'wheel' && (
+                                    <div className="flex flex-col items-center justify-center p-10 bg-slate-900 rounded-[3rem] shadow-2xl relative overflow-hidden">
+                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-12 bg-red-500 z-10" style={{clipPath:'polygon(0 0, 100% 0, 50% 100%)'}}></div>
+                                        <div className="wheel-container shadow-2xl" style={{transform: `rotate(${rotation}deg)`}}>
+                                            {students.map((s, i) => (
+                                                <div key={s.id} className="wheel-item" style={{transform: `rotate(${(360/students.length)*i}deg)`}}>
+                                                    <span style={{backgroundColor: `hsl(${i * (360/students.length)}, 70%, 50%)` }} className="px-2 py-1 rounded">
+                                                        {s.name.substring(0, 15)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={spin} className="mt-10 bg-yellow-400 text-slate-900 px-16 py-5 rounded-2xl font-black text-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-yellow-400/20">ÇARKIBEŞER'İ ÇEVİR!</button>
+                                        {winner && <div className="mt-8 text-5xl font-black text-white animate-bounce">🏆 {winner.name}</div>}
+                                    </div>
+                                )}
+
+                                {page === 'ranks' && (
+                                    <div className="max-w-2xl mx-auto space-y-4">
+                                        <h2 className="text-center font-black text-2xl mb-6 tracking-widest uppercase italic">Liderlik Tablosu</h2>
+                                        {students.sort((a,b)=>b.xp - a.xp).map((s,i) => (
+                                            <div key={s.id} className="bg-white p-6 rounded-2xl shadow-md flex justify-between items-center border-r-8 border-yellow-400">
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-2xl font-black text-slate-300">#{i+1}</span>
+                                                    <span className="text-lg font-bold text-slate-700">{s.name}</span>
+                                                </div>
+                                                <div className="text-xl font-black text-indigo-600">{s.xp} <span className="text-xs">XP</span></div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
